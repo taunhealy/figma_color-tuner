@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 16px;
+    }
+
+    .color-palette {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .color-pair {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .color-swatch {
+      width: 100%;
+      height: 60px;
+      border-radius: 6px;
+      border: 1px solid #e5e5e5;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .color-swatch:hover {
+      transform: scale(1.05);
+    }
+
+    .color-input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #e5e5e5;
+      border-radius: 4px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #18A0FB;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    button:hover {
+      background: #0D8DE3;
+    }
+
+    .label {
+      font-size: 12px;
+      color: #333;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="color-palette" id="colorPalette"></div>
+  <button id="tuneButton">Tune Colors</button>
+
+  <script>
+    const MAX_COLORS = 6;
+    let currentColors = Array(MAX_COLORS).fill({ r: 255, g: 255, b: 255 });
+    let tunedColors = Array(MAX_COLORS).fill({ r: 255, g: 255, b: 255 });
+
+    function createColorPair(index) {
+      const pair = document.createElement('div');
+      pair.className = 'color-pair';
+
+      const originalSwatch = document.createElement('div');
+      originalSwatch.className = 'color-swatch';
+      originalSwatch.style.backgroundColor = `rgb(255, 255, 255)`;
+
+      const tunedSwatch = document.createElement('div');
+      tunedSwatch.className = 'color-swatch';
+      tunedSwatch.style.backgroundColor = `rgb(255, 255, 255)`;
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'color-input';
+      input.placeholder = '#FFFFFF';
+      input.value = '#FFFFFF';
+
+      input.addEventListener('input', (e) => {
+        const color = hexToRgb(e.target.value);
+        if (color) {
+          currentColors[index] = color;
+          originalSwatch.style.backgroundColor = e.target.value;
+        }
+      });
+
+      tunedSwatch.addEventListener('click', () => {
+        parent.postMessage({ 
+          pluginMessage: { 
+            type: 'apply-colors',
+            color: tunedColors[index]
+          }
+        }, '*');
+      });
+
+      pair.appendChild(originalSwatch);
+      pair.appendChild(tunedSwatch);
+      pair.appendChild(input);
+      return pair;
+    }
+
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    }
+
+    function rgbToHex(r, g, b) {
+      return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
+    const palette = document.getElementById('colorPalette');
+    for (let i = 0; i < MAX_COLORS; i++) {
+      palette.appendChild(createColorPair(i));
+    }
+
+    document.getElementById('tuneButton').onclick = () => {
+      parent.postMessage({ 
+        pluginMessage: { 
+          type: 'tune-colors',
+          colors: currentColors
+        }
+      }, '*');
+    };
+
+    onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (msg.type === 'tuned-colors') {
+        tunedColors = msg.colors;
+        const pairs = document.querySelectorAll('.color-pair');
+        pairs.forEach((pair, index) => {
+          const tunedSwatch = pair.children[1];
+          const color = tunedColors[index];
+          tunedSwatch.style.backgroundColor = `rgb(${color.r}, ${color.g}, ${color.b})`;
+        });
+      }
+    };
+  </script>
+</body>
+</html> 
